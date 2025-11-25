@@ -458,6 +458,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -470,6 +472,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -489,7 +492,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -1140,6 +1144,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1152,6 +1158,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -1171,7 +1178,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -1822,6 +1830,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1834,6 +1844,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -1853,7 +1864,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -2504,6 +2516,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -2516,6 +2530,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -2535,7 +2550,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -3186,6 +3202,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -3198,6 +3216,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -3217,7 +3236,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -3892,6 +3912,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -3904,6 +3926,7 @@ from datetime import datetime
 #   `id` INT PRIMARY KEY AUTO_INCREMENT,
 #   `serial_item_transfer_id` INT,
 #   `serial_number` VARCHAR(255),
+#   `barcode` VARCHAR(100) COMMENT 'Scanned barcode in barcode mode (for audit trail)',
 #   `item_code` VARCHAR(255),
 #   `item_description` VARCHAR(255),
 #   `warehouse_code` VARCHAR(255),
@@ -3923,7 +3946,8 @@ from datetime import datetime
 #   `parent_item_code` VARCHAR(255),
 #   `line_group_id` VARCHAR(255),
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+#   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   INDEX `idx_serial_item_transfer_item_lookup` (`serial_item_transfer_id`, `item_code`)
 # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 # 
 # 
@@ -4646,6 +4670,8 @@ from datetime import datetime
 #   `qc_notes` TEXT,
 #   `from_warehouse` VARCHAR(255),
 #   `to_warehouse` VARCHAR(255),
+#   `bpl_id` INT COMMENT 'Business Place ID from SAP B1',
+#   `bpl_name` VARCHAR(200) COMMENT 'Business Place Name for UI display',
 #   `priority` VARCHAR(255),
 #   `notes` TEXT,
 #   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

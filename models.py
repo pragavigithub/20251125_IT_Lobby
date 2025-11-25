@@ -730,6 +730,8 @@ class SerialItemTransfer(db.Model):
     qc_notes = db.Column(db.Text)
     from_warehouse = db.Column(db.String(10), nullable=False)
     to_warehouse = db.Column(db.String(10), nullable=False)
+    bpl_id = db.Column(db.Integer, nullable=True)  # Business Place ID from SAP B1
+    bpl_name = db.Column(db.String(200), nullable=True)  # Business Place Name for display
     priority = db.Column(db.String(10), default='normal')  # low, normal, high, urgent
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -747,6 +749,7 @@ class SerialItemTransferItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     serial_item_transfer_id = db.Column(db.Integer, db.ForeignKey('serial_item_transfers.id'), nullable=False)
     serial_number = db.Column(db.String(100), nullable=True)  # The entered serial number (nullable for non-serial items)
+    barcode = db.Column(db.String(100), nullable=True)  # Scanned barcode in barcode mode (for audit trail)
     item_code = db.Column(db.String(50), nullable=False)  # Auto-populated from SAP B1
     item_description = db.Column(db.String(200), nullable=False)  # Auto-populated from SAP B1
     warehouse_code = db.Column(db.String(10), nullable=False)  # From SAP B1 validation
@@ -770,6 +773,9 @@ class SerialItemTransferItem(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Index for performance when looking up items
+    __table_args__ = (db.Index('idx_serial_item_transfer_item_lookup', 'serial_item_transfer_id', 'item_code'),)
     
     # Note: Allowing duplicate serial numbers for user review and manual deletion
     # __table_args__ = (db.UniqueConstraint('serial_item_transfer_id', 'serial_number', name='unique_serial_per_transfer'),)
