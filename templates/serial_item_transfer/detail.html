@@ -412,6 +412,9 @@
                                     </td>
                                     {% if transfer.status == 'draft' and (transfer.user_id == current_user.id or current_user.role in ['admin', 'manager']) %}
                                     <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal('{{ item.id }}', '{{ item.serial_number }}', '{{ item.item_code }}', '{{ item.item_description }}', '{{ item.quantity }}', '{{ item.item_type }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem('{{ item.id }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -431,6 +434,50 @@
                         {% endif %}
                     </div>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editItemModalLabel">Edit Line Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editItemForm">
+                        <input type="hidden" id="editItemId" name="item_id">
+                        <input type="hidden" id="editItemType" name="item_type">
+                        
+                        <div class="mb-3">
+                            <label for="editSerialNumber" class="form-label">Serial Number</label>
+                            <input type="text" class="form-control" id="editSerialNumber" name="serial_number" readonly>
+                            <div class="form-text">Serial number is for reference only and cannot be changed</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editItemCode" class="form-label">Item Code</label>
+                            <input type="text" class="form-control" id="editItemCode" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editItemDescription" class="form-label">Item Description</label>
+                            <input type="text" class="form-control" id="editItemDescription" name="item_description">
+                        </div>
+                        
+                        <div class="mb-3" id="editQuantityGroup">
+                            <label for="editQuantity" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="editQuantity" name="quantity" min="1">
+                            <div class="form-text">Quantity can only be edited for non-serial items</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEditItem()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -833,6 +880,62 @@ function removeItem(itemId) {
             }
         });
     }
+}
+
+function openEditModal(itemId, serialNumber, itemCode, itemDescription, quantity, itemType) {
+    // Set values in the modal
+    $('#editItemId').val(itemId);
+    $('#editSerialNumber').val(serialNumber || 'N/A');
+    $('#editItemCode').val(itemCode);
+    $('#editItemDescription').val(itemDescription);
+    $('#editQuantity').val(quantity);
+    $('#editItemType').val(itemType);
+    
+    // For serial items, disable quantity editing and set to 1
+    if (itemType === 'serial') {
+        $('#editQuantity').prop('readonly', true).val(1);
+        $('#editQuantityGroup .form-text').text('Quantity is always 1 for serial items');
+    } else {
+        $('#editQuantity').prop('readonly', false);
+        $('#editQuantityGroup .form-text').text('Quantity can only be edited for non-serial items');
+    }
+    
+    // Show the modal
+    $('#editItemModal').modal('show');
+}
+
+function saveEditItem() {
+    const itemId = $('#editItemId').val();
+    const formData = $('#editItemForm').serialize();
+    
+    // Show loading state
+    const saveBtn = $('#editItemModal .btn-primary');
+    const originalText = saveBtn.html();
+    saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+    
+    $.ajax({
+        url: `/serial-item-transfer/items/${itemId}/edit`,
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            if (response.success) {
+                showAlert('Item updated successfully', 'success');
+                $('#editItemModal').modal('hide');
+                setTimeout(function() {
+                    location.reload();
+                }, 1000);
+            } else {
+                showAlert(response.error || 'Error updating item', 'error');
+                saveBtn.prop('disabled', false).html(originalText);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error updating item:', error);
+            const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : error;
+            showAlert('Error updating item: ' + errorMsg, 'error');
+            saveBtn.prop('disabled', false).html(originalText);
+        }
+    });
 }
 
 function submitTransfer() {
