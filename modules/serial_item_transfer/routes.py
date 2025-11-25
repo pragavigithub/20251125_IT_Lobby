@@ -367,6 +367,79 @@ def add_non_serial_item(transfer_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@serial_item_bp.route('/items/<int:item_id>/edit', methods=['POST'])
+@login_required
+def edit_item(item_id):
+    """Edit serial item transfer item"""
+    try:
+        item = SerialItemTransferItem.query.get_or_404(item_id)
+        transfer = item.serial_item_transfer
+
+        # Check permissions
+        if transfer.user_id != current_user.id and current_user.role not in ['admin', 'manager']:
+            return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+        if transfer.status != 'draft':
+            return jsonify({'success': False, 'error': 'Cannot edit items in non-draft transfer'}), 400
+
+        # Get form data
+        quantity = request.form.get('quantity', '').strip()
+        serial_number = request.form.get('serial_number', '').strip()
+        item_description = request.form.get('item_description', '').strip()
+
+        # Validate quantity for non-serial items
+        if item.item_type == 'non_serial' and quantity:
+            try:
+                quantity_int = int(quantity)
+                if quantity_int <= 0:
+                    return jsonify({'success': False, 'error': 'Quantity must be greater than 0'}), 400
+                
+                # Validate against available stock
+                sap = SAPIntegration()
+                quantity_check_result = sap.get_item_quantity_check(transfer.from_warehouse, item.item_code)
+                
+                if quantity_check_result.get('success') and not quantity_check_result.get('offline_mode'):
+                    on_hand_quantity = float(quantity_check_result.get('data', {}).get('OnHand', 0))
+                    if quantity_int > on_hand_quantity:
+                        return jsonify({
+                            'success': False,
+                            'error': f'Requested quantity ({quantity_int}) exceeds available stock ({on_hand_quantity})'
+                        }), 400
+                
+                item.quantity = quantity_int
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid quantity format'}), 400
+
+        # Update item description if provided
+        if item_description:
+            item.item_description = item_description
+
+        # Update serial number display (for reference only, not for validation)
+        if serial_number and item.item_type == 'serial':
+            item.serial_number = serial_number
+
+        item.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        logging.info(f"✏️ Item {item.id} updated in transfer {transfer.id}")
+        return jsonify({
+            'success': True,
+            'message': 'Item updated successfully',
+            'item_data': {
+                'id': item.id,
+                'serial_number': item.serial_number,
+                'item_code': item.item_code,
+                'item_description': item.item_description,
+                'quantity': item.quantity
+            }
+        })
+
+    except Exception as e:
+        logging.error(f"Error editing serial item: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @serial_item_bp.route('/items/<int:item_id>/delete', methods=['POST'])
 @login_required
 def delete_item(item_id):
