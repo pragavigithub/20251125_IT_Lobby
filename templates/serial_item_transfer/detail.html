@@ -412,10 +412,16 @@
                                     </td>
                                     {% if transfer.status == 'draft' and (transfer.user_id == current_user.id or current_user.role in ['admin', 'manager']) %}
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal('{{ item.id }}', '{{ item.serial_number }}', '{{ item.item_code }}', '{{ item.item_description }}', '{{ item.quantity }}', '{{ item.item_type }}')">
+                                        {% if item.item_type == 'non_serial' %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal('{{ item.id }}', '{{ item.serial_number }}', '{{ item.item_code }}', '{{ item.item_description }}', '{{ item.quantity }}', '{{ item.item_type }}')" title="Edit quantity">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem('{{ item.id }}')">
+                                        {% else %}
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" disabled title="Serial items cannot be edited">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem('{{ item.id }}')" title="Delete item">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -465,7 +471,8 @@
                         
                         <div class="mb-3">
                             <label for="editItemDescription" class="form-label">Item Description</label>
-                            <input type="text" class="form-control" id="editItemDescription" name="item_description">
+                            <input type="text" class="form-control" id="editItemDescription" name="item_description" readonly>
+                            <div class="form-text">Item description cannot be changed</div>
                         </div>
                         
                         <div class="mb-3" id="editQuantityGroup">
@@ -883,6 +890,12 @@ function removeItem(itemId) {
 }
 
 function openEditModal(itemId, serialNumber, itemCode, itemDescription, quantity, itemType) {
+    // Serial items should not be editable - this is a fallback
+    if (itemType === 'serial') {
+        showAlert('Serial items cannot be edited. Please delete and re-add if changes are needed.', 'error');
+        return;
+    }
+    
     // Set values in the modal
     $('#editItemId').val(itemId);
     $('#editSerialNumber').val(serialNumber || 'N/A');
@@ -891,14 +904,10 @@ function openEditModal(itemId, serialNumber, itemCode, itemDescription, quantity
     $('#editQuantity').val(quantity);
     $('#editItemType').val(itemType);
     
-    // For serial items, disable quantity editing and set to 1
-    if (itemType === 'serial') {
-        $('#editQuantity').prop('readonly', true).val(1);
-        $('#editQuantityGroup .form-text').text('Quantity is always 1 for serial items');
-    } else {
-        $('#editQuantity').prop('readonly', false);
-        $('#editQuantityGroup .form-text').text('Quantity can only be edited for non-serial items');
-    }
+    // For non-serial items, enable quantity editing only
+    $('#editQuantity').prop('readonly', false).attr('min', 1);
+    $('#editItemDescription').prop('readonly', true);
+    $('#editQuantityGroup .form-text').text('Enter the quantity for this item (will be validated against SAP stock)');
     
     // Show the modal
     $('#editItemModal').modal('show');
@@ -906,6 +915,14 @@ function openEditModal(itemId, serialNumber, itemCode, itemDescription, quantity
 
 function saveEditItem() {
     const itemId = $('#editItemId').val();
+    const quantity = parseInt($('#editQuantity').val());
+    
+    // Frontend validation
+    if (!quantity || quantity <= 0) {
+        showAlert('Quantity must be a positive number', 'error');
+        return;
+    }
+    
     const formData = $('#editItemForm').serialize();
     
     // Show loading state
@@ -919,7 +936,12 @@ function saveEditItem() {
         data: formData,
         success: function(response) {
             if (response.success) {
-                showAlert('Item updated successfully', 'success');
+                // Show success message, with warning if SAP validation was skipped
+                if (response.warning) {
+                    showAlert('Item updated successfully. Note: ' + response.warning, 'warning');
+                } else {
+                    showAlert('Item updated successfully', 'success');
+                }
                 $('#editItemModal').modal('hide');
                 setTimeout(function() {
                     location.reload();
@@ -931,8 +953,21 @@ function saveEditItem() {
         },
         error: function(xhr, status, error) {
             console.error('Error updating item:', error);
-            const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : error;
-            showAlert('Error updating item: ' + errorMsg, 'error');
+            let errorMsg = 'Unknown error occurred';
+            
+            if (xhr.status === 503) {
+                errorMsg = 'SAP validation system is currently unavailable. Please try again in a few moments.';
+            } else if (xhr.status === 400) {
+                errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Invalid request. Please check your inputs.';
+            } else if (xhr.status === 403) {
+                errorMsg = 'You do not have permission to edit this item.';
+            } else if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            } else {
+                errorMsg = 'Unable to update item. Please try again.';
+            }
+            
+            showAlert(errorMsg, 'error');
             saveBtn.prop('disabled', false).html(originalText);
         }
     });

@@ -370,7 +370,7 @@ def add_non_serial_item(transfer_id):
 @serial_item_bp.route('/items/<int:item_id>/edit', methods=['POST'])
 @login_required
 def edit_item(item_id):
-    """Edit serial item transfer item"""
+    """Edit serial item transfer item - only allows editing quantity for non-serial items"""
     try:
         item = SerialItemTransferItem.query.get_or_404(item_id)
         transfer = item.serial_item_transfer
@@ -382,47 +382,70 @@ def edit_item(item_id):
         if transfer.status != 'draft':
             return jsonify({'success': False, 'error': 'Cannot edit items in non-draft transfer'}), 400
 
+        # Serial items cannot be edited - they must be deleted and re-added
+        if item.item_type == 'serial':
+            return jsonify({
+                'success': False, 
+                'error': 'Serial items cannot be edited. Please delete and re-add the item if changes are needed.'
+            }), 400
+
         # Get form data
         quantity = request.form.get('quantity', '').strip()
-        serial_number = request.form.get('serial_number', '').strip()
         item_description = request.form.get('item_description', '').strip()
 
-        # Validate quantity for non-serial items
-        if item.item_type == 'non_serial' and quantity:
-            try:
-                quantity_int = int(quantity)
-                if quantity_int <= 0:
-                    return jsonify({'success': False, 'error': 'Quantity must be greater than 0'}), 400
-                
-                # Validate against available stock
-                sap = SAPIntegration()
-                quantity_check_result = sap.get_item_quantity_check(transfer.from_warehouse, item.item_code)
-                
-                if quantity_check_result.get('success') and not quantity_check_result.get('offline_mode'):
-                    on_hand_quantity = float(quantity_check_result.get('data', {}).get('OnHand', 0))
-                    if quantity_int > on_hand_quantity:
-                        return jsonify({
-                            'success': False,
-                            'error': f'Requested quantity ({quantity_int}) exceeds available stock ({on_hand_quantity})'
-                        }), 400
-                
-                item.quantity = quantity_int
-            except ValueError:
-                return jsonify({'success': False, 'error': 'Invalid quantity format'}), 400
+        # Validate quantity for non-serial items (required)
+        if not quantity:
+            return jsonify({'success': False, 'error': 'Quantity is required'}), 400
 
-        # Update item description if provided
-        if item_description:
-            item.item_description = item_description
+        try:
+            quantity_int = int(quantity)
+            if quantity_int <= 0:
+                return jsonify({'success': False, 'error': 'Quantity must be a positive integer'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Quantity must be a valid number'}), 400
 
-        # Update serial number display (for reference only, not for validation)
-        if serial_number and item.item_type == 'serial':
-            item.serial_number = serial_number
+        # Re-validate against SAP stock levels when available
+        sap = SAPIntegration()
+        sap_validation_attempted = False
+        sap_validation_warning = None
+        
+        try:
+            quantity_check_result = sap.get_item_quantity_check(transfer.from_warehouse, item.item_code)
+            sap_validation_attempted = True
+            
+            # If SAP is online and validation succeeds, enforce stock limits
+            if quantity_check_result.get('success') and not quantity_check_result.get('offline_mode'):
+                item_data = quantity_check_result.get('data', {})
+                on_hand_quantity = float(item_data.get('OnHand', 0))
+                
+                # Validate that requested quantity does not exceed available stock
+                if quantity_int > on_hand_quantity:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Requested quantity ({quantity_int}) exceeds available stock ({int(on_hand_quantity)})'
+                    }), 400
+                
+                logging.info(f"✅ SAP stock validation passed for item {item.item_code}: {quantity_int} <= {int(on_hand_quantity)}")
+            
+            # If SAP is offline or unavailable, allow edit but log warning
+            elif quantity_check_result.get('offline_mode'):
+                sap_validation_warning = 'SAP validation unavailable - stock levels not checked'
+                logging.warning(f"⚠️ {sap_validation_warning} for item {item_id}. Proceeding with edit.")
+        
+        except Exception as e:
+            # If SAP call fails, allow edit but log the error
+            sap_validation_warning = 'SAP validation unavailable - stock levels not checked'
+            logging.error(f"Error during SAP validation for item {item_id}: {str(e)}. Proceeding with edit anyway.")
+
+        # Update item quantity (with or without SAP validation)
+        item.quantity = quantity_int
 
         item.updated_at = datetime.utcnow()
         db.session.commit()
 
-        logging.info(f"✏️ Item {item.id} updated in transfer {transfer.id}")
-        return jsonify({
+        logging.info(f"✏️ Non-serial item {item.id} (ItemCode: {item.item_code}) updated in transfer {transfer.id} - Qty: {quantity_int}")
+        
+        response_data = {
             'success': True,
             'message': 'Item updated successfully',
             'item_data': {
@@ -432,10 +455,16 @@ def edit_item(item_id):
                 'item_description': item.item_description,
                 'quantity': item.quantity
             }
-        })
+        }
+        
+        # Include warning if SAP validation was skipped
+        if sap_validation_warning:
+            response_data['warning'] = sap_validation_warning
+        
+        return jsonify(response_data)
 
     except Exception as e:
-        logging.error(f"Error editing serial item: {str(e)}")
+        logging.error(f"Error editing item: {str(e)}")
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
