@@ -11,6 +11,21 @@ The application is built with Flask, utilizing HTML templates with Bootstrap for
 
 ## Recent Changes
 
+**November 25, 2025**: Implemented Edit and Delete Functionality for Serial Item Transfer Line Items
+- ✅ Added edit route (`/items/<int:item_id>/edit`) with comprehensive validation
+- ✅ Edit functionality restricted to non-serial items only (serial items must be deleted and re-added)
+- ✅ Implemented balanced SAP validation approach:
+  - When SAP is online: Enforces stock level validation and blocks exceeding quantities
+  - When SAP is offline/unavailable: Allows edits with warning messages to user
+  - All validation attempts logged for audit trail
+- ✅ Added edit and delete buttons to line items in transfer detail view
+- ✅ Created edit modal with read-only item description and editable quantity field
+- ✅ Frontend validation prevents editing of serial items with clear user messaging
+- ✅ Comprehensive error handling for all scenarios (400/403/503 HTTP status codes)
+- ✅ User-friendly error messages with retry guidance for SAP unavailability
+- ✅ Security checks enforce draft status and user permissions (owner or admin/manager)
+- ✅ Production-ready with proper logging, validation, and offline resilience
+
 **November 22, 2025**: Enhanced Warehouse Assignment Configuration Screen with Pagination and Filtering
 - ✅ Added real-time search/filter input for users (searches by username or email)
 - ✅ Implemented rows-per-page selector with options: 10, 25, 50, 100 (default: 25)
