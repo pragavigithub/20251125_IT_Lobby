@@ -1,0 +1,261 @@
+🧩 Module Name: Serial Item Transfer
+1. UI Behaviour
+
+There are two toggle buttons at the top:
+
+Button 1: Serial
+
+Button 2: Barcode
+
+When Serial is selected:
+
+Serial Number TextField is enabled
+
+Barcode TextField is disabled
+
+When Barcode is selected:
+
+Barcode TextField is enabled
+
+Serial Number TextField is disabled
+
+Everything else in the screen works based on which mode is active.
+
+2️⃣ Serial Mode – Logic
+
+Trigger: User clicks Serial button and enters a Serial Number.
+
+2.1 Input
+
+TextField: SerialNumber
+
+User types a serial number, for example: V01
+
+2.2 Call this SAP Service Layer URL
+
+URL:
+
+POST https://192.168.0.152:50000/b1s/v1/SQLQueries('Series_Validation_I')/List
+
+
+Body:
+
+{
+  "ParamList": "serialNumber='V01'&fromWhsCode='7000-FG'"
+}
+
+2.3 Expected Response
+{
+  "value": [
+    {
+      "BPLId": 5,
+      "BranchName": "ORD-CHENNAI",
+      "ItemCode": "Vivo",
+      "SerialNumber": "V01",
+      "WhsCode": "7000-FG"
+    }
+  ]
+}
+
+2.4 Business Logic (Serial mode)
+
+Read ItemCode, SerialNumber, WhsCode, BPLId from the response.
+
+This is always a serial-managed item, so:
+
+Default line quantity = 1
+
+Serial is stored in StockTransferLines[n].SerialNumbers[]
+
+In the current draft Stock Transfer JSON:
+
+Check if there is already a line where:
+
+ItemCode = response ItemCode
+
+FromWarehouseCode = WhsCode
+
+WarehouseCode = target ToWarehouse selected in UI
+
+If line FOUND (same serial item):
+
+Increase Quantity by 1.0
+
+Append a new object to SerialNumbers:
+
+{
+  "InternalSerialNumber": "<SerialNumber>",
+  "Quantity": 1
+}
+
+
+If line NOT FOUND:
+
+Create a new line:
+
+{
+  "LineNum": <next line number>,
+  "ItemCode": "<ItemCode>",
+  "Quantity": 1.0,
+  "WarehouseCode": "<ToWarehouse>",
+  "FromWarehouseCode": "<FromWarehouse>",
+  "SerialNumbers": [
+    {
+      "InternalSerialNumber": "<SerialNumber>",
+      "Quantity": 1
+    }
+  ],
+  "BatchNumbers": [],
+  "StockTransferLinesBinAllocations": []
+}
+
+
+BPLID for the document comes from the query (BPLId).
+
+3️⃣ Barcode Mode – Logic (Non-Serial Items)
+
+Trigger: User clicks Barcode button and enters a Barcode value.
+
+3.1 Input
+
+TextField: Barcode
+
+User types a barcode, e.g., 0101010
+
+Then user enters Quantity manually in a quantity field.
+
+3.2 Call this SAP Service Layer URL
+
+URL:
+
+POST https://192.168.0.152:50000/b1s/v1/SQLQueries('Barcode_Validation')/List
+
+
+Body:
+
+{
+  "ParamList": "BarCode='0101010'&fromWhsCode='7000-FG'"
+}
+
+3.3 Expected Response
+{
+  "value": [
+    {
+      "BPLId": 5,
+      "BarCode": "0101010",
+      "ItemCode": "earbuds",
+      "OnHand": 2000.0,
+      "WhsCode": "7000-FG"
+    }
+  ]
+}
+
+3.4 Business Logic (Barcode mode)
+
+Read ItemCode, WhsCode, BPLId from the response.
+
+This is non-serial item, so:
+
+User enters Quantity manually (e.g., 10)
+
+In the current draft Stock Transfer JSON:
+
+Check if there is already a line where:
+
+ItemCode = response ItemCode
+
+FromWarehouseCode = WhsCode
+
+SerialNumbers is empty (non-serial line)
+
+If line FOUND (same non-serial item):
+
+Increase line Quantity += entered quantity
+
+If line NOT FOUND:
+
+Create new non-serial line:
+
+{
+  "LineNum": <next line number>,
+  "ItemCode": "<ItemCode>",
+  "Quantity": <manual quantity>,
+  "WarehouseCode": "<ToWarehouse>",
+  "FromWarehouseCode": "<FromWarehouse>",
+  "BatchNumbers": [],
+  "SerialNumbers": [],
+  "StockTransferLinesBinAllocations": []
+}
+
+4️⃣ Final SAP B1 Stock Transfer JSON (Combined)
+
+Important:
+Both Serial and Barcode flows must build one single document (one StockTransfers payload), not separate documents.
+
+Example final JSON (mixed serial + non-serial):
+
+{
+  "DocDate": "2025-11-17",
+  "Comments": "QC Approved WMS Transfer 2 by admin",
+  "FromWarehouse": "7000-FG",
+  "ToWarehouse": "7000-QFG",
+  "U_EA_CREATEDBy": "user",      // stock transfer created by
+  "U_EA_Approved": "QC User",    // QC approved by
+  "BPLID": 5,
+  "StockTransferLines": [
+    {
+      "LineNum": 0,
+      "ItemCode": "IPhone",
+      "Quantity": 2.0,
+      "WarehouseCode": "7000-QFG",
+      "FromWarehouseCode": "7000-FG",
+      "SerialNumbers": [
+        {
+          "InternalSerialNumber": "IP000005",
+          "Quantity": 1
+        },
+        {
+          "InternalSerialNumber": "IP000006",
+          "Quantity": 1
+        }
+      ],
+      "BatchNumbers": [],
+      "StockTransferLinesBinAllocations": []
+    },
+    {
+      "LineNum": 1,
+      "ItemCode": "Non_Sr_Bt",
+      "Quantity": 10.0,
+      "WarehouseCode": "7000-QFG",
+      "FromWarehouseCode": "7000-FG",
+      "BatchNumbers": [],
+      "SerialNumbers": [],
+      "StockTransferLinesBinAllocations": []
+    }
+  ]
+}
+
+
+Note: Real JSON can’t contain comments (//), they are just for explanation here.
+
+5️⃣ Key Points to Implement
+
+Same document for both serial and barcode lines.
+
+Serial mode:
+
+Auto quantity = 1 per scan
+
+Append serials to SerialNumbers[]
+
+Increase line quantity automatically
+
+Barcode mode:
+
+Use manual quantity
+
+Non-serial lines (empty SerialNumbers[])
+
+BPLID, FromWarehouse, ToWarehouse must align with query results and UI selections.
+
+Line Should be Auto populate in the Transfer Line Item section . That should be a editable and Delete option.
